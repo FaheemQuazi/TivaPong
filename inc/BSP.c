@@ -152,7 +152,7 @@
 
 #include <stdint.h>
 #include "BSP.h"
-#include "../inc/tm4c123gh6pm.h"
+#include "tm4c123gh6pm.h"
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts

@@ -36,7 +36,7 @@ uint32_t mailbox_data[MAILBOX_SIZE];
 int mailbox_pos = 0;
 
 void SetInitialStack(int i, int32_t initPt) {
-  //***YOU IMPLEMENT THIS FUNCTION*****
+
   tcbs[i].sp = &Stacks[i][STACKSIZE - 16]; // thread stack pointer
   Stacks[i][STACKSIZE - 1] = 0x01000000;   // Thumb bit
   Stacks[i][STACKSIZE - 2] = initPt;       // Initial PC
@@ -129,108 +129,13 @@ int OS_AddThread(void (*thr)(void), uint32_t prio) {
   }
 }
 
-//******** OS_AddThreads ***************
-// Add six main threads to the scheduler
-// Inputs: function pointers to six void/void main threads
-// Outputs: 1 if successful, 0 if this thread can not be added
-// This function will only be called once, after OS_Init and before OS_Launch
-int OS_AddThreads(void(*thread0)(void), uint32_t p0,
-                  void(*thread1)(void), uint32_t p1,
-                  void(*thread2)(void), uint32_t p2,
-                  void(*thread3)(void), uint32_t p3,
-                  void(*thread4)(void), uint32_t p4,
-                  void(*thread5)(void), uint32_t p5,
-                  void(*thread6)(void), uint32_t p6,
-                  void(*thread7)(void), uint32_t p7)
-{
-  // initialize TCB circular list
-  // initialize RunPt
-  // initialize four stacks, including initial PC
-  //***YOU IMPLEMENT THIS FUNCTION*****
-  int32_t status = StartCritical();
-
-  OS_AddThread(thread0, p0);
-  OS_AddThread(thread1, p1);
-  OS_AddThread(thread2, p2);
-  OS_AddThread(thread3, p3);
-  OS_AddThread(thread4, p4);
-  OS_AddThread(thread5, p5);
-  OS_AddThread(thread6, p6);
-  OS_AddThread(thread7, p7);
-
-  RunPt = &tcbs[0];
-
-  EndCritical(status);
-
-  return 1; // successful
-}
-
-//******** OS_AddPeriodicEventThreads ***************
-// Add two background periodic event threads
-// Typically this function receives the highest priority
-// Inputs: pointers to a void/void event thread function2
-//         periods given in units of OS_Launch (Lab 2 this will be msec)
-// Outputs: 1 if successful, 0 if this thread cannot be added
-// It is assumed that the event threads will run to completion and return
-// It is assumed the time to run these event threads is short compared to 1 msec
-// These threads cannot spin, block, loop, sleep, or kill
-// These threads can call OS_Signal
-// int OS_AddPeriodicEventThreads(void (*thread1)(void), uint32_t period1,
-//                                void (*thread2)(void), uint32_t period2)
-// {
-//   //***YOU IMPLEMENT THIS FUNCTION*****
-//   OS_AddPeriodicEventThread(thread1, period1);
-//   OS_AddPeriodicEventThread(thread2, period2);
-//   return 1;
-// }
-
-//******** OS_AddPeriodicEventThread ***************
-// Add one background periodic event thread
-// Typically this function receives the highest priority
-// Inputs: pointer to a void/void event thread function
-//         period given in units of OS_Launch (Lab 3 this will be msec)
-// Outputs: 1 if successful, 0 if this thread cannot be added
-// It is assumed that the event threads will run to completion and return
-// It is assumed the time to run these event threads is short compared to 1 msec
-// These threads cannot spin, block, loop, sleep, or kill
-// These threads can call OS_Signal
-// In Lab 3 this will be called exactly twice
-// int OS_AddPeriodicEventThread(void (*perth)(void), uint32_t period) {
-//   int32_t status = StartCritical();
-
-//   if (currentPeriodicThreadCount < NUMPERIODICTHREADS) {
-//     ptcbs[currentPeriodicThreadCount].func = perth;
-//     ptcbs[currentPeriodicThreadCount].period = period;
-//     ptcbs[currentPeriodicThreadCount].count = 0;
-//     currentPeriodicThreadCount += 1;
-  
-//     EndCritical(status);
-//     return 1;
-//   } else {
-  
-//     EndCritical(status);
-//     return 0;
-//   }
-// }
-
 void runperiodicevents(void){
-// ****IMPLEMENT THIS****
 // **RUN PERIODIC THREADS, DECREMENT SLEEP COUNTERS
   for (int i = 0; i < currentThreadCount; i++) {
     if (tcbs[i].sleep > 0) {
       tcbs[i].sleep--;
     }
   }
-  
-  // for (int i = 0; i < currentPeriodicThreadCount; i++)
-  // {
-  //   ptcbs[i].count++;
-  //   if (ptcbs[i].count >= ptcbs[i].period)
-  //   {
-  //     (*ptcbs[i].func)();
-  //     ptcbs[i].count = 0;
-  //   }
-  // }
 }
 
 //******** OS_Launch ***************
@@ -256,7 +161,6 @@ void Scheduler(void){
   runperiodicevents();
 
   for (int i = 0; i <= maxprio; i++) {
-    
     tcbType *curr = PrioPt[i]; 
     tcbType *best = 0;
     do {
@@ -272,17 +176,6 @@ void Scheduler(void){
       break;
     }
   }
-
-  // curr = RunPt;
-
-  // do {
-  //   curr = curr->next;
-  //   if ((curr->priority < max) && (curr->blocked == 0) && (curr->sleep == 0)) {
-  //     max = curr->priority;
-  //     best = curr;
-  //   }
-  // } while (curr != RunPt);
-  // RunPt = best;
   RunPt->hasRun += 1;
 }
 
@@ -293,7 +186,7 @@ void Scheduler(void){
 // Outputs: none
 void OS_InitSemaphore(int32_t *semaPt, int32_t value)
 {
-  //***YOU IMPLEMENT THIS FUNCTION*****
+
   DisableInterrupts();
   (*semaPt) = value;
   EnableInterrupts();
@@ -307,7 +200,7 @@ void OS_InitSemaphore(int32_t *semaPt, int32_t value)
 // Outputs: none
 void OS_Wait(int32_t *semaPt)
 {
-  //***YOU IMPLEMENT THIS FUNCTION*****
+
   DisableInterrupts();
   if ((*semaPt) <= 0)
   {
@@ -349,7 +242,7 @@ void OS_Sleep(uint32_t sleepTime){
 // Outputs: none
 void OS_Signal(int32_t *semaPt)
 {
-  //***YOU IMPLEMENT THIS FUNCTION*****
+
   DisableInterrupts();
   // tcbType *pt;
   if ((*semaPt) <= 0)
@@ -378,7 +271,7 @@ void OS_Signal(int32_t *semaPt)
 void OS_MailBox_Init(void)
 {
   // include data field and semaphore
-  //***YOU IMPLEMENT THIS FUNCTION*****
+
   OS_InitSemaphore(&sema_mailbox, 0);
   mailbox_pos = 0;
 }
@@ -391,7 +284,7 @@ void OS_MailBox_Init(void)
 // Errors: data lost if MailBox already has data
 void OS_MailBox_Send(uint32_t data)
 {
-  //***YOU IMPLEMENT THIS FUNCTION*****
+
   DisableInterrupts();
   if (mailbox_pos < MAILBOX_SIZE)
   {
@@ -412,7 +305,7 @@ void OS_MailBox_Send(uint32_t data)
 // Errors:  none
 uint32_t OS_MailBox_Recv(void)
 {
-  //***YOU IMPLEMENT THIS FUNCTION*****
+
   OS_Wait(&sema_mailbox);
   return mailbox_data[--mailbox_pos];
 }
@@ -424,7 +317,7 @@ uint32_t OS_MailBox_Recv(void)
 // Outputs: none
 void OS_FIFO_Init(void)
 {
-  //***IMPLEMENT THIS***
+
   OS_InitSemaphore(&fifo_curr_size, 0);
   DisableInterrupts();
   // set up circular array
@@ -451,7 +344,7 @@ void OS_FIFO_Init(void)
 // Outputs: 0 if successful, -1 if the FIFO is full
 int OS_FIFO_Put(uint32_t data)
 {
-  //***IMPLEMENT THIS***
+
   DisableInterrupts();
   if (fifo_back->next == fifo_front) {
     fifo_lost_data++;
@@ -481,7 +374,7 @@ uint32_t OS_FIFO_Get(void)
   DisableInterrupts();
   uint32_t data;
 
-  //***IMPLEMENT THIS***
+
   data = fifo_front->data;
   fifo_front = fifo_front->next;
 
@@ -547,7 +440,6 @@ int32_t *edgeSemaphore;
 // Outputs: none
 void OS_EdgeTrigger_Init(int32_t *semaPt, uint8_t priority){
 	edgeSemaphore = semaPt;
-//***IMPLEMENT THIS***
 
   SYSCTL_RCGCGPIO_R |= 0x00000008; // 1) activate clock for Port D
   while((SYSCTL_PRGPIO_R&0x08) == 0){};// allow time for clock to stabilize
@@ -586,7 +478,6 @@ void OS_EdgeTrigger_Init(int32_t *semaPt, uint8_t priority){
 // Outputs: none
 void OS_EdgeTrigger_Restart(void){
   DisableInterrupts();
-//***IMPLEMENT THIS***
   GPIO_PORTD_IM_R |= 0x80;// rearm interrupt 3 in NVIC
   GPIO_PORTD_ICR_R = 0x80;// clear flag7
   
@@ -594,7 +485,6 @@ void OS_EdgeTrigger_Restart(void){
 }
 
 void GPIOPortD_Handler(void){
-//***IMPLEMENT THIS***
 	// step 1 acknowledge by clearing flag
   // step 2 signal semaphore (no need to run scheduler)
   // step 3 disarm interrupt to prevent bouncing to create multiple signals

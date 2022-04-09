@@ -35,8 +35,6 @@
   ╚════════════════════════════════╝
 
 */
-
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -44,53 +42,90 @@
 #include "CortexM.h"
 #include "os.h"
 
+// Pong
+#include "pong/controls/joy.h"
+#include "pong/objects/paddle.h"
+
 #define THREADFREQ 1000   // frequency in Hz of round robin scheduler
 
 int main(void){
-  // OS_Init();
-  BSP_Button1_Init();
-  BSP_Button2_Init();
-  BSP_Joystick_Init();
-  BSP_Buzzer_Init(1024);
   BSP_LCD_Init();
-  BSP_LCD_FillScreen(BSP_LCD_Color565(0, 0, 0));
+  BSP_LCD_FillScreen(LCD_BLACK);
 
-  const int paddleAxis = 6;
-  const int paddleIncrement = 3;
-  int paddleStart = 6;
-  int paddleEnd = 24;
+  // Controls
+  JoyPos *jp = JoyInit();
+ 
+  // Paddles
+  Paddle player1;
+  Paddle_Init(&player1, LCD_WHITE);
 
-  uint16_t joyX, joyY;
-  uint8_t joySel;
+  // Ball
+  int ballX = 64;
+  int ballY = 60;
+  int ballThickness = 4;
+  int bounce = 1;
+  int bounceSideLeft = 0;
+  int bounceSideRight = 0;
+  bool goal = false;
 
-  BSP_LCD_DrawFastHLine(5, paddleAxis-2, 123, LCD_WHITE);
+  // Border around the playing field
+  BSP_LCD_DrawFastHLine(0, 2, 128, LCD_CYAN);
 
   while (true) {
+    // Update vars
+    ptJoyUpdate();
 
-    BSP_LCD_DrawFastHLine(0, paddleAxis, 128, LCD_BLACK);
-    BSP_LCD_DrawFastHLine(0, paddleAxis+1, 128, LCD_BLACK);
-    BSP_LCD_DrawFastHLine(0, paddleAxis+2, 128, LCD_BLACK);
+    // Condition where paddle hits right side
+    if (jp->x > 750) Paddle_MoveRight(&player1);
+      
+    // Condition where paddle hits left side
+    if (jp->x < 250) Paddle_MoveLeft(&player1);
 
-    BSP_LCD_DrawFastHLine(paddleStart, paddleAxis, 16, LCD_WHITE);
-    BSP_LCD_DrawFastHLine(paddleStart, paddleAxis+1, 16, LCD_WHITE);
-    BSP_LCD_DrawFastHLine(paddleStart, paddleAxis+2, 16, LCD_WHITE);
-
-    BSP_Joystick_Input(&joyX, &joyY, &joySel);
-    if (joyX > 750 && paddleEnd <= 123) {
-      paddleStart = paddleStart + paddleIncrement;
-      paddleEnd = paddleEnd + paddleIncrement;
-    } else if (joyX < 250 && paddleStart >= 5) {
-      paddleStart = paddleStart - paddleIncrement;
-      paddleEnd = paddleEnd - paddleIncrement;
+    // draw the paddle
+    for (int i = 0; i < player1.thickness; i++) {
+      BSP_LCD_DrawFastHLine(0, player1.axis+i, 128, LCD_BLACK);
+      BSP_LCD_DrawFastHLine(player1.center-(player1.width/2), player1.axis+i, player1.width, player1.color);
     }
 
-    // BSP_LCD_SetCursor(0, 6);
-    // BSP_LCD_OutUDec(joyX, LCD_WHITE);
-    // BSP_LCD_SetCursor(0, 8);
-    // BSP_LCD_OutUDec(joyY, LCD_WHITE);
-    // BSP_LCD_SetCursor(0, 10);
-    // BSP_LCD_OutUDec(joySel, LCD_WHITE);    
-
+    if (goal == false){
+      BSP_LCD_FillRect(ballX-ballThickness/2, ballY-ballThickness/2, ballThickness, ballThickness, LCD_BLACK);
+      if (bounce == 1){
+        ballY--;
+        // if ball hits player1 paddle, bounce off
+        if (ballY == (player1.axis+player1.thickness)+1 && player1.center-2 < ballX && ballX < player1.center+2){
+          bounce--;
+        }
+        // if player1 misses ball, other player scores
+        else if(ballY < (player1.axis+player1.thickness)+1) {
+          goal = true;
+        }
+        // if ball bounces off the right side of player1 paddle, bounce to the right at 45 degrees
+        else if (ballY == (player1.axis+player1.thickness)+1 && player1.center-(player1.width/2) < (ballX + (ballThickness/2)) && ballX < player1.center-2){
+          bounceSideLeft++;
+          bounce--;
+        }
+        // if ball bounces off the left side of player1 paddle, bounce to the left at 45 degrees
+        else if (ballY == (player1.axis+player1.thickness)+1 && player1.center+2 < ballX && (ballX - (ballThickness/2)) < player1.center+(player1.width/2)){
+          bounceSideRight++;
+          bounce--;
+        }
+      }
+      else if (bounce == 0 && bounceSideRight != 1 && bounceSideLeft != 1){
+        ballY++;
+        if (ballY == 64){
+          bounce++;
+        }
+      }
+      else if (bounceSideLeft == 1){
+        ballY++;
+        ballX--;
+      }
+      else if (bounceSideRight == 1){
+        ballY++;
+        ballX++;
+      }
+      BSP_LCD_FillRect(ballX-ballThickness/2, ballY-ballThickness/2, ballThickness, ballThickness, LCD_WHITE);
+    }
 
     BSP_Delay1ms(10);
   }

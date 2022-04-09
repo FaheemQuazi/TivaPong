@@ -428,7 +428,7 @@
                   <MiscControls></MiscControls>
                   <Define></Define>
                   <Undefine></Undefine>
-                  <IncludePath>./inc</IncludePath>
+                  <IncludePath>./inc;./pong/objects;./pong/controls</IncludePath>
                 </VariousControls>
               </Cads>
               <Aads>
@@ -478,19 +478,14 @@
               <FilePath>.\inc\CortexM.c</FilePath>
             </File>
             <File>
-              <FileName>Profile.c</FileName>
+              <FileName>joy.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\inc\Profile.c</FilePath>
+              <FilePath>.\pong\controls\joy.c</FilePath>
             </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>Object</GroupName>
-          <Files>
             <File>
-              <FileName>texas.o</FileName>
-              <FileType>3</FileType>
-              <FilePath>.\texas.o</FilePath>
+              <FileName>paddle.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\pong\objects\paddle.c</FilePath>
             </File>
           </Files>
         </Group>
