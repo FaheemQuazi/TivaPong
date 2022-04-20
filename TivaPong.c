@@ -45,91 +45,90 @@
 // Pong
 #include "pong/controls/joy.h"
 #include "pong/objects/paddle.h"
+#include "pong/objects/ball.h"
+#include "physics.h"
 
 #define THREADFREQ 1000   // frequency in Hz of round robin scheduler
 
 int main(void){
-  BSP_LCD_Init();
-  BSP_LCD_FillScreen(LCD_BLACK);
+    BSP_LCD_Init();
+    BSP_LCD_FillScreen(LCD_BLACK);
 
-  // Controls
-  JoyPos *jp = JoyInit();
- 
-  // Paddles
-  Paddle player1;
-  Paddle_Init(&player1, LCD_WHITE);
+    // Controls
+    JoyPos *jp = JoyInit();
 
-  // Ball
-  int ballX = 64;
-  int ballY = 60;
-  int ballThickness = 4;
-  int bounce = 1;
-  int bounceSideLeft = 0;
-  int bounceSideRight = 0;
-  bool goal = false;
+    // Playfield (Vertical)
+    int WallLX = 2, WallRX = 125, WallY = 64;
+    Physics_Body pbWallL;
+    Physics_Body pbWallR;
+    Physics_Body_Init(&pbWallL, &WallLX, &WallY, 1, 128, PHYSICS_BODY_FLAG_GENERIC);
+    Physics_Body_Init(&pbWallR, &WallRX, &WallY, 1, 128, PHYSICS_BODY_FLAG_GENERIC);
 
-  // Border around the playing field
-  BSP_LCD_DrawFastHLine(0, 2, 128, LCD_CYAN);
+    // Playfield (Horizontal/Scoring)
+    int WallP1Y = 1, WallP2Y = 127, WallPX = 64;
+    Physics_Body pbWallP1;
+    Physics_Body pbWallP2;
+    Physics_Body_Init(&pbWallP1, &WallPX, &WallP1Y, 128, 1, PHYSICS_BODY_FLAG_SCORE);
+    Physics_Body_Init(&pbWallP2, &WallPX, &WallP2Y, 128, 1, PHYSICS_BODY_FLAG_SCORE);
 
-  while (true) {
-    // Update vars
-    ptJoyUpdate();
+    // Paddles
+    Paddle player1;
+    Paddle player2;
+    Paddle_Init(&player1, 7, 4, LCD_WHITE);
+    Paddle_Init(&player2, 121, 2, LCD_GREEN);
 
-    // Condition where paddle hits right side
-    if (jp->x > 750) Paddle_MoveRight(&player1);
-      
-    // Condition where paddle hits left side
-    if (jp->x < 250) Paddle_MoveLeft(&player1);
+    // Ball
+    Ball gameBall;
+    Ball_Init(&gameBall, 64, 64, 4);
+    Ball_AddCollisionCheck(&gameBall, &player1.pbPaddle);
+    Ball_AddCollisionCheck(&gameBall, &player2.pbPaddle);
+    Ball_AddCollisionCheck(&gameBall, &pbWallL);
+    Ball_AddCollisionCheck(&gameBall, &pbWallR);
 
-    // draw the paddle
-    for (int i = 0; i < player1.thickness; i++) {
-      BSP_LCD_DrawFastHLine(0, player1.axis+i, 128, LCD_BLACK);
-      BSP_LCD_DrawFastHLine(player1.center-(player1.width/2), player1.axis+i, player1.width, player1.color);
+    while (true) {
+        BSP_LCD_DrawFastVLine(WallLX, 0, 128, LCD_CYAN);
+        BSP_LCD_DrawFastVLine(WallRX, 0, 128, LCD_CYAN);
+        BSP_LCD_DrawFastHLine(0, WallP1Y, 128, LCD_CYAN); 
+        BSP_LCD_DrawFastHLine(0, WallP2Y, 128, LCD_CYAN); 
+
+        // Update vars
+        ptJoyUpdate();
+
+        // Condition where paddle hits right side
+        if (jp->x > 750) Paddle_MoveRight(&player1);
+
+        // Condition where paddle hits left side
+        if (jp->x < 250) Paddle_MoveLeft(&player1);
+
+        // move player2 based on ball position
+        if (gameBall.x > player2.center + player2.width/2 - 1) Paddle_MoveRight(&player2);
+        if (gameBall.x < player2.center - player2.width/2 - 1) Paddle_MoveLeft(&player2);
+
+        // draw the paddle
+        Paddle_Draw(&player1);
+        Paddle_Draw(&player2);
+
+        // move and draw the ball
+        Ball_Move(&gameBall);
+
+        if (Physics_Body_CheckCollision(&pbWallP1, &gameBall.pbBall)) {
+            // P2 Score
+            Paddle_Score(&player2);
+            Ball_SetLocation(&gameBall, 64, 64);
+        } else if (Physics_Body_CheckCollision(&pbWallP2, &gameBall.pbBall)) {
+            // P1 Score
+            Paddle_Score(&player1);
+            Ball_SetLocation(&gameBall, 64, 64);
+        }
+        
+        // display score
+        BSP_LCD_SetCursor(1, 6);
+        BSP_LCD_OutUDec(player1.score, LCD_WHITE);
+        BSP_LCD_SetCursor(19, 6);
+        BSP_LCD_OutUDec(player2.score, LCD_WHITE);
+
+        BSP_Delay1ms(8);
     }
 
-    if (goal == false){
-      BSP_LCD_FillRect(ballX-ballThickness/2, ballY-ballThickness/2, ballThickness, ballThickness, LCD_BLACK);
-      if (bounce == 1){
-        ballY--;
-        // if ball hits player1 paddle, bounce off
-        if (ballY == (player1.axis+player1.thickness)+1 && player1.center-2 < ballX && ballX < player1.center+2){
-          bounce--;
-        }
-        // if player1 misses ball, other player scores
-        else if(ballY < (player1.axis+player1.thickness)+1) {
-          goal = true;
-        }
-        // if ball bounces off the right side of player1 paddle, bounce to the right at 45 degrees
-        else if (ballY == (player1.axis+player1.thickness)+1 && player1.center-(player1.width/2) < (ballX + (ballThickness/2)) && ballX < player1.center-2){
-          bounceSideLeft++;
-          bounce--;
-        }
-        // if ball bounces off the left side of player1 paddle, bounce to the left at 45 degrees
-        else if (ballY == (player1.axis+player1.thickness)+1 && player1.center+2 < ballX && (ballX - (ballThickness/2)) < player1.center+(player1.width/2)){
-          bounceSideRight++;
-          bounce--;
-        }
-      }
-      else if (bounce == 0 && bounceSideRight != 1 && bounceSideLeft != 1){
-        ballY++;
-        if (ballY == 64){
-          bounce++;
-        }
-      }
-      else if (bounceSideLeft == 1){
-        ballY++;
-        ballX--;
-      }
-      else if (bounceSideRight == 1){
-        ballY++;
-        ballX++;
-      }
-      BSP_LCD_FillRect(ballX-ballThickness/2, ballY-ballThickness/2, ballThickness, ballThickness, LCD_WHITE);
-    }
-
-    BSP_Delay1ms(10);
-  }
-  
-  // when grading change 1000 to 4-digit number from edX
-  // OS_Launch(BSP_Clock_GetFreq() / THREADFREQ); // doesn't return, interrupts enabled in here
+    // OS_Launch(BSP_Clock_GetFreq() / THREADFREQ); // doesn't return, interrupts enabled in here
 }

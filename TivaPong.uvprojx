@@ -428,7 +428,7 @@
                   <MiscControls></MiscControls>
                   <Define></Define>
                   <Undefine></Undefine>
-                  <IncludePath>./inc;./pong/objects;./pong/controls</IncludePath>
+                  <IncludePath>./inc;./pong/objects;./pong/controls;./pong/os</IncludePath>
                 </VariousControls>
               </Cads>
               <Aads>
@@ -486,6 +486,16 @@
               <FileName>paddle.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\pong\objects\paddle.c</FilePath>
+            </File>
+            <File>
+              <FileName>physics.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\pong\os\physics.c</FilePath>
+            </File>
+            <File>
+              <FileName>ball.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\pong\objects\ball.c</FilePath>
             </File>
           </Files>
         </Group>
