@@ -18,7 +18,7 @@
 //   int leftWallBounceDown = 0;
 //   int rightWallBounceDown = 0;
 
-typedef struct b {
+typedef struct bl {
     int x;
     int y;
     int thickness;

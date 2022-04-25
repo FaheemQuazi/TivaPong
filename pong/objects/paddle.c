@@ -1,7 +1,6 @@
 #include "paddle.h"
 
 void Paddle_Init(Paddle *p, int axis, int increment, uint16_t color) {
-    p->score = 0;
     p->axis = axis;
     p->increment = increment;
     p->center = 64;
@@ -46,8 +45,4 @@ bool Paddle_MoveRight(Paddle *p) {
         p->center += p->increment;
 
     return Paddle_CollisionRight(p);
-}
-
-void Paddle_Score(Paddle *p) {
-    p->score++;
 }

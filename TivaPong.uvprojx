@@ -453,19 +453,19 @@
           </GroupOption>
           <Files>
             <File>
-              <FileName>os.c</FileName>
+              <FileName>gameOS.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\os.c</FilePath>
-            </File>
-            <File>
-              <FileName>TivaPong.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\TivaPong.c</FilePath>
+              <FilePath>.\pong\os\gameOS.c</FilePath>
             </File>
             <File>
               <FileName>osasm.s</FileName>
               <FileType>2</FileType>
               <FilePath>.\osasm.s</FilePath>
+            </File>
+            <File>
+              <FileName>button.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\pong\controls\button.c</FilePath>
             </File>
             <File>
               <FileName>BSP.c</FileName>
@@ -496,6 +496,16 @@
               <FileName>ball.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\pong\objects\ball.c</FilePath>
+            </File>
+            <File>
+              <FileName>TivaPong.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\TivaPong.c</FilePath>
+            </File>
+            <File>
+              <FileName>playfield.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\pong\objects\playfield.c</FilePath>
             </File>
           </Files>
         </Group>

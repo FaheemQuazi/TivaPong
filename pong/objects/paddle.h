@@ -7,7 +7,6 @@
 #include "physics.h"
 
 typedef struct pdl {
-    int score;
     int axis;
     int increment;
     int center;

@@ -6,14 +6,13 @@
 #include <stdlib.h>
 #include "BSP.h"
 
-typedef struct jp {
+typedef struct joyp {
     uint16_t x;
     uint16_t y;
     uint8_t sel;
 } JoyPos;
 
 JoyPos* JoyInit(void);
-JoyPos JoyGetPosition(void);
 void ptJoyUpdate(void);
 
 #endif
