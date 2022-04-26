@@ -70,6 +70,8 @@ Physics_Body pbWallP2;
 uint32_t p1Score = 0;
 uint32_t p2Score = 0;
 
+int32_t semaBuzzer;
+
 void Playfield_Init(Ball* gb) {
     // Playfield (Vertical)
     Physics_Body_Init(&pbWallL, &WallLX, &WallY, 1, 128, PHYSICS_BODY_FLAG_GENERIC);
@@ -90,61 +92,29 @@ void Playfield_ScoreCheck() {
             // P2 Score
             p2Score += 1;
             Ball_SetLocation(&gameBall, 64, 64);
+            Ball_SetDirection(&gameBall, 0, 1);
+            Paddle_Recenter(&player1);
+            Paddle_Recenter(&player2);
         } else if (Physics_Body_CheckCollision(&pbWallP2, &gameBall.pbBall)) {
             // P1 Score 
             p1Score += 1;
             Ball_SetLocation(&gameBall, 64, 64);
+            Ball_SetDirection(&gameBall, 0, -1);
+            Paddle_Recenter(&player1);
+            Paddle_Recenter(&player2);
         }
     }
-}
-
-void Playfield_DrawScore() {
-    BSP_LCD_SetCursor(1, 6);
-    BSP_LCD_OutUDec(p1Score, LCD_WHITE);
-    BSP_LCD_SetCursor(19, 6);
-    BSP_LCD_OutUDec(p2Score, LCD_WHITE);
-}
-
-void Playfield_DrawField() {
-    BSP_LCD_DrawFastVLine(WallLX, 0, 128, LCD_CYAN);
-    BSP_LCD_DrawFastVLine(WallRX, 0, 128, LCD_CYAN);
-    BSP_LCD_DrawFastHLine(0, WallP1Y, 128, LCD_CYAN); 
-    BSP_LCD_DrawFastHLine(0, WallP2Y, 128, LCD_CYAN); 
 }
 
 void Playfield_ResetScore() {
     p1Score = 0;
     p2Score = 0;
     Ball_SetLocation(&gameBall, 64, 64);
+    Ball_SetDirection(&gameBall, 0, -1);
+    Paddle_Recenter(&player1);
+    Paddle_Recenter(&player2);
 }
 
-
-void Game_Player1_Paddle_Move() {
-    // Condition where paddle hits right side
-    if (stick->x > 750) Paddle_MoveRight(&player1);
-
-    // Condition where paddle hits left side
-    if (stick->x < 250) Paddle_MoveLeft(&player1);
-
-}
-
-void Game_Player2_Paddle_Move() {
-
-    if (gameBall.x > player2.center + player2.width/2 - 1) Paddle_MoveRight(&player2);
-    if (gameBall.x < player2.center - player2.width/2 - 1) Paddle_MoveLeft(&player2);
-    
-}
-
-void Game_Draw_Paddles() {
-    Paddle_Draw(&player1);
-    Paddle_Draw(&player2);
-}
-
-void Game_Draw_Ball() {
-    Ball_Move(&gameBall);
-}
-
-// ================ Just a suggestion below ==================
 void Draw(void) {
     while (true) {
         // Draw player paddles
@@ -152,7 +122,7 @@ void Draw(void) {
         Paddle_Draw(&player2);
 
         // Draw ball
-        Ball_Move(&gameBall);
+        Ball_Draw(&gameBall);
 
         // Draw Score
         BSP_LCD_SetCursor(1, 6);
@@ -169,36 +139,88 @@ void Draw(void) {
     }
 }
 
+uint32_t randM = 1231451;
 void Physics(void) {
     while(true) {
-
-        // Move player2 paddle
-        if (gameBall.x > player2.center + player2.width/2 - 1) Paddle_MoveRight(&player2);
-        if (gameBall.x < player2.center - player2.width/2 - 1) Paddle_MoveLeft(&player2);
+        // randomly delay the Player 2 AI Control
+        randM = 1664525*randM+1013904223;
+        if (randM % 100 > 47) {
+            // Move player2 paddle
+            if (gameBall.x > player2.center + player2.width/2 - 1) Paddle_MoveRight(&player2);
+            if (gameBall.x < player2.center - player2.width/2 - 1) Paddle_MoveLeft(&player2);
+        }
 
         // Condition where paddle hits right side
         if (stick->x > 750) Paddle_MoveRight(&player1);
 
         // Condition where paddle hits left side
         if (stick->x < 250) Paddle_MoveLeft(&player1);
-        gOS_Sleep(12);
+
+        // Move Ball
+        bool hasHit = Ball_Move(&gameBall);
+        
+        // if ball hits something, buzzer
+        if (hasHit) {
+            gOS_Signal(&semaBuzzer);
+        }
+        
+        gOS_Sleep(32);
     }
 }
 
 void Control(void) {
+    
     while (true) {
-        // Update joystick position
         ptJoyUpdate();
+        gOS_Sleep(8);
+    }
+}
 
-        // Update status of buttons
+int previousState = 1;
+void State(void) {
+
+    while (true) {
+
         Button1Update();
         Button2Update();
-        gOS_Sleep(4);
+
+        if (B1->pressed == 0 && previousState == 1) {
+            previousState = 0;
+            gOS_Lock(&Control);
+            gOS_Lock(&Physics);
+            Ball_ChangeColor(&gameBall, LCD_RED);
+            gOS_Sleep(200);
+        } else if (B1->pressed == 0 && previousState == 0) {
+            previousState = 1;
+            gOS_Unlock(&Control);
+            gOS_Unlock(&Physics);
+            Ball_ChangeColor(&gameBall, LCD_WHITE);
+            gOS_Sleep(200);
+        }
+
+        if (B2->pressed == 0) {
+            Playfield_ResetScore();
+            gOS_Sleep(200);
+        }
+
+        gOS_Sleep(20);
     }
-}   
+
+}
+
+void Sound(void) {
+    while (true) {
+        gOS_Wait(&semaBuzzer);
+        BSP_Buzzer_Set(512);
+        gOS_Sleep(20);
+        BSP_Buzzer_Set(0);
+        gOS_Sleep(20);
+    }
+}
 
 int main(void){
-
+    
+    // OS Stuff
     gOS_Init();
 
     // Clear the screen
@@ -208,13 +230,17 @@ int main(void){
     // Initialize Joystick
     stick = JoyInit();
 
+    // Initialize Buzzer Stuff
+    BSP_Buzzer_Init(0);
+    gOS_InitSemaphore(&semaBuzzer, 0);
+
     // Initialize Button1 and Button2
     B1 = Button1Init();
     B2 = Button2Init();
     
     // Initialize Paddles
     Paddle_Init(&player1, 7, 2, LCD_WHITE);
-    Paddle_Init(&player2, 121, 1, LCD_GREEN);
+    Paddle_Init(&player2, 121, 2, LCD_GREEN);
 
     // Initialize Ball
     Ball_Init(&gameBall, 64, 64, 4);
@@ -224,7 +250,9 @@ int main(void){
     // Initialize Playfield
     Playfield_Init(&gameBall);
 
-    gOS_AddThreads(&Control, &Physics, &Draw, &Playfield_ScoreCheck); // these names are arbitrary for now
+    void (*ths[NUMTHREADS])(void) = {&Control, &Physics, &Draw, &Playfield_ScoreCheck, &State, &Sound};
+
+    gOS_AddThreads(ths);
     gOS_Launch(BSP_Clock_GetFreq() / THREADFREQ);
 
     return 0;

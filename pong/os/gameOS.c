@@ -38,7 +38,7 @@ bool gOS_RegisterDrawFunction(gOS_Func thr) {
 }
 
 void sleepManager() {
-  for (int i = 0; i < NUMTHREADS; i++) {
+  for (int i = 0; i < threadCount; i++) {
     if (tcbs[i].count > 0) {
       tcbs[i].count = tcbs[i].count - 1;
     }
@@ -81,29 +81,25 @@ void gOS_Suspend(void){
   INTCTRL = 0x04000000; // trigger SysTick, but not reset time
 }
 
-int gOS_AddThreads(void (*th0)(void),void (*th1)(void), void (*th2)(void), void (*th3)(void)) {
-  // Initialize linked list 
-  tcbs[0].next = &tcbs[1];
-  tcbs[1].next = &tcbs[2];
-  tcbs[2].next = &tcbs[3];
-  tcbs[3].next = &tcbs[0];
+void gOS_AddThreads(void (*ths[])(void)) {
+  threadCount = NUMTHREADS;
+  
+  for (int i = 0; i < NUMTHREADS - 1; i++) {
+    tcbs[i].next = &tcbs[i + 1];
+    SetInitialStack(i, (int32_t)ths[i]);
+    tcbs[i].locked = 0;
+    tcbs[i].blocked = 0;
+    tcbs[i].count = 0;
+    tcbs[i].thRef = ths[i];
+  }
 
-  tcbs[0].count = 0;
-  tcbs[1].count = 0;
-  tcbs[2].count = 0;
-  tcbs[3].count = 0;
-
-  threadCount = 4;
-
-  // Initialize Stack for the 3 threads
-  SetInitialStack(0, (int32_t)th0);
-  SetInitialStack(1, (int32_t)th1);
-  SetInitialStack(2, (int32_t)th2);
-  SetInitialStack(3, (int32_t)th3);
-
+  tcbs[NUMTHREADS - 1].next = &tcbs[0];
+  SetInitialStack(NUMTHREADS-1, (int32_t)ths[NUMTHREADS-1]);
+  tcbs[NUMTHREADS - 1].locked = 0;
+  tcbs[NUMTHREADS - 1].blocked = 0;
+  tcbs[NUMTHREADS - 1].count = 0;
+  tcbs[NUMTHREADS - 1].thRef = ths[NUMTHREADS - 1];
   RunPt = &tcbs[0];
-
-  return 1;
 }
 
 // Round Robin scheduler
@@ -111,37 +107,85 @@ void Scheduler(void){
     sleepManager();
     Thread* np = RunPt->next;
 
-    while (np->count > 0) {
+    // go around RR if the thread is asleep or blocked
+    while (np->count > 0 || np->blocked != 0 || np->locked != 0) {
       np = np->next;
     }
 
     RunPt = np;
 }
 
-// void OS_InitSemaphore(int32_t *semaPt, int32_t value)
-// {
+void gOS_InitSemaphore(int32_t *semaPt, int32_t value)
+{
 
-//   DisableInterrupts();
-//   (*semaPt) = value;
-//   EnableInterrupts();
-// }
+  DisableInterrupts();
+  (*semaPt) = value;
+  EnableInterrupts();
+}
 
-// void OS_Wait(int32_t *semaPt)
-// {
-//   DisableInterrupts();
-//   if ((*semaPt) <= 0)
-//   {
-//     // sets the blocked field to the blocking semaphore
-//     RunPt->blocked = semaPt;
-//   }
-//   (*semaPt) = (*semaPt) - 1;
-//   EnableInterrupts();
-// }
+void gOS_Wait(int32_t *semaPt)
+{
+  DisableInterrupts();
+  if ((*semaPt) <= 0)
+  {
+    // sets the blocked field to the blocking semaphore
+    RunPt->blocked = semaPt;
+    gOS_Suspend();
+  }
+  (*semaPt) = (*semaPt) - 1;
+  EnableInterrupts();
+}
 
-void gOS_Sleep(uint32_t sleepTime){
+void gOS_Signal(int32_t *semaPt)
+{
+
+  DisableInterrupts();
+  if ((*semaPt) <= 0)
+  {
+    for (int i = 0; i < threadCount; i++) {
+      if (tcbs[i].blocked == semaPt) {
+        tcbs[i].blocked = 0;
+        break;
+      }
+    }
+  }
+  *semaPt = *semaPt + 1;
+  EnableInterrupts();
+}
+
+void gOS_Sleep(uint32_t sleepTime) {
   // set sleep parameter in TCB
   DisableInterrupts();
   RunPt->count = sleepTime;
   gOS_Suspend();
   EnableInterrupts();
+}
+
+int searchForThread(void (*th)(void)) {
+  int idx = 0;
+  Thread *curr = &tcbs[0];
+
+  while (curr->thRef != th && idx < threadCount) {
+    curr = curr->next;
+    idx++;
+  }
+
+  return idx > threadCount ? -1 : idx;
+}
+
+int gOS_Lock(void (*th)(void)) {
+  int idx = searchForThread(th);
+
+  if (idx >=0) tcbs[idx].locked = 1;
+  else return -1;
+
+  return 0;
+}
+
+int gOS_Unlock(void (*th)(void)) {
+  int idx = searchForThread(th);
+
+  if (idx >= 0) tcbs[idx].locked = 0;
+  else return -1;
+  return 0;
 }

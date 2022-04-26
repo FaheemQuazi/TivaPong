@@ -46,3 +46,7 @@ bool Paddle_MoveRight(Paddle *p) {
 
     return Paddle_CollisionRight(p);
 }
+
+void Paddle_Recenter(Paddle *p) {
+    p->center = 64;
+}

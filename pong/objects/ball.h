@@ -21,10 +21,13 @@
 typedef struct bl {
     int x;
     int y;
+    int prevX;
+    int prevY;
     int thickness;
     int verticalDirection;
     int horizontalDirection;
     int speed;
+    int color;
     Physics_Body pbBall;
     Physics_Body *pbOthers[PHYSICS_MAX_COLLIDERS];
     int numRegColliders;
@@ -33,6 +36,9 @@ typedef struct bl {
 void Ball_Init(Ball *b, int x, int y, int thickness);
 void Ball_AddCollisionCheck(Ball *b, Physics_Body *pb);
 void Ball_SetLocation(Ball *b, int x, int y);
-void Ball_Move(Ball *b);
+void Ball_SetDirection(Ball *b, int xDirection, int yDirection);
+void Ball_ChangeColor(Ball *b, int c);
+bool Ball_Move(Ball *b);
+void Ball_Draw(Ball *b);
 
 #endif

@@ -21,6 +21,7 @@ void Paddle_Score(Paddle *p);
 
 bool Paddle_MoveRight(Paddle *p);
 bool Paddle_MoveLeft(Paddle *p);
+void Paddle_Recenter(Paddle *p);
 
 void Paddle_Draw(Paddle *p);
 

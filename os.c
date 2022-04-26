@@ -213,6 +213,26 @@ void OS_Wait(int32_t *semaPt)
   EnableInterrupts();
 }
 
+// ******** OS_Signal ************
+// Increment semaphore
+// Lab2 spinlock
+// Lab3 wakeup blocked thread if appropriate
+// Inputs:  pointer to a counting semaphore
+// Outputs: none
+void OS_Signal(int32_t *semaPt)
+{
+
+  DisableInterrupts();
+    Thread *pt;
+    while (pt->blocked != semaPt){
+      pt = pt->next;
+    }
+    // at this point we should have a thread that is not blocked
+    pt->blocked = 0;
+  *semaPt = *semaPt + 1;
+  EnableInterrupts();
+}
+
 void OS_Suspend(void){ 
 
   STCURRENT = 0; // Reset time
@@ -232,35 +252,6 @@ void OS_Sleep(uint32_t sleepTime){
     RunPt->sleep = sleepTime;
     EnableInterrupts();
     OS_Suspend();
-}
-
-// ******** OS_Signal ************
-// Increment semaphore
-// Lab2 spinlock
-// Lab3 wakeup blocked thread if appropriate
-// Inputs:  pointer to a counting semaphore
-// Outputs: none
-void OS_Signal(int32_t *semaPt)
-{
-
-  DisableInterrupts();
-  // tcbType *pt;
-  if ((*semaPt) <= 0)
-  {
-    for (int i = 0; i < currentThreadCount; i++) {
-      if (tcbs[i].blocked == semaPt) {
-        tcbs[i].blocked = 0;
-        break;
-      }
-    }
-    // while (pt->blocked != semaPt){
-    //   pt = pt->next;
-    // }
-    // // at this point we should have a thread that is not blocked
-    // pt->blocked = 0;
-  }
-  *semaPt = *semaPt + 1;
-  EnableInterrupts();
 }
 
 // ******** OS_MailBox_Init ************
